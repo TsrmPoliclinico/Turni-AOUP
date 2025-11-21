@@ -1,0 +1,5 @@
+{
+  "name": "Turni Radiologia 7 da pubblicare",
+  "description": "Un'applicazione per gestire e organizzare i turni di un reparto di radiologia, inclusa la gestione degli utenti, le notifiche ai dipendenti e l'assistenza alla pianificazione basata su intelligenza artificiale.",
+  "requestFramePermissions": []
+}
