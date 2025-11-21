@@ -33,6 +33,49 @@ const PlusIcon: React.FC<{className?: string}> = ({className}) => (
     </svg>
 );
 
+// Helper functions per le festività
+const getEasterDate = (year: number) => {
+    const f = Math.floor,
+        G = year % 19,
+        C = f(year / 100),
+        H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30,
+        I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11)),
+        J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7,
+        L = I - J,
+        month = 3 + f((L + 40) / 44),
+        day = L + 28 - 31 * f(month / 4);
+
+    return new Date(year, month - 1, day);
+};
+
+const getItalianHolidayName = (date: Date): string | null => {
+    const d = date.getDate();
+    const m = date.getMonth() + 1; // 1-12
+    const y = date.getFullYear();
+
+    // Festività fisse
+    if (d === 1 && m === 1) return "Capodanno";
+    if (d === 6 && m === 1) return "Epifania";
+    if (d === 25 && m === 4) return "Liberazione";
+    if (d === 1 && m === 5) return "Festa Lavoro";
+    if (d === 2 && m === 6) return "Repubblica";
+    if (d === 15 && m === 8) return "Ferragosto";
+    if (d === 1 && m === 11) return "Ognissanti";
+    if (d === 8 && m === 12) return "Immacolata";
+    if (d === 25 && m === 12) return "Natale";
+    if (d === 26 && m === 12) return "S. Stefano";
+
+    // Festività mobili (Pasqua e Pasquetta)
+    const easter = getEasterDate(y);
+    if (date.getDate() === easter.getDate() && date.getMonth() === easter.getMonth()) return "Pasqua";
+
+    const pasquetta = new Date(easter);
+    pasquetta.setDate(pasquetta.getDate() + 1);
+    if (date.getDate() === pasquetta.getDate() && date.getMonth() === pasquetta.getMonth()) return "Pasquetta";
+
+    return null;
+};
+
 
 interface AddShiftModalProps {
   date: Date;
@@ -50,7 +93,7 @@ const AddShiftModal: React.FC<AddShiftModalProps> = ({ date, area, timeSlot, use
   const timeSlotName = timeSlot === 'morning' ? 'Mattina' : timeSlot === 'afternoon' ? 'Pomeriggio' : 'Notte';
 
   const availableUsers = useMemo(() => {
-    // Filter out admin users from manual assignment
+    // Filtra via gli amministratori dall'assegnazione manuale
     const assignableUsers = users.filter(u => !u.isAdmin);
 
     if (area === DiagnosticArea.PS && timeSlot === 'night') {
@@ -544,16 +587,21 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ shifts, users, vacat
                 {daysInMonth.map(day => {
                     const dateStr = day.toISOString().split('T')[0];
                     const dayOfWeek = day.getDay();
+                    const holidayName = getItalianHolidayName(day);
+                    const isHoliday = !!holidayName;
                     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
                     const isToday = dateStr === new Date().toISOString().split('T')[0];
 
                     return (
                         <tr key={dateStr} style={{ height: rowHeights[dateStr] || MIN_ROW_HEIGHT }} className="relative group/row">
                              {/* Date Column */}
-                             <td className={`sticky left-0 z-10 border-r border-gray-200 p-2 text-sm ${isToday ? 'bg-blue-50' : 'bg-white'} ${isWeekend ? 'text-red-600 font-medium' : 'text-gray-700'}`}>
+                             <td className={`sticky left-0 z-10 border-r border-gray-200 p-2 text-sm ${isToday ? 'bg-blue-50' : (isHoliday ? 'bg-red-50' : 'bg-white')} ${(isWeekend || isHoliday) ? 'text-red-600 font-bold' : 'text-gray-700'}`}>
                                 <div className="flex flex-col items-center justify-center h-full relative">
-                                     <span className="text-lg font-bold">{day.getDate()}</span>
+                                     <span className="text-lg">{day.getDate()}</span>
                                      <span className="text-xs uppercase">{day.toLocaleDateString('it-IT', { weekday: 'short' })}</span>
+                                     {isHoliday && (
+                                         <span className="text-[10px] uppercase text-center mt-1 leading-tight max-w-full text-red-600">{holidayName}</span>
+                                     )}
                                      
                                      {isManager && (
                                          <div 
@@ -571,7 +619,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ shifts, users, vacat
                                 if (area.id === DiagnosticArea.PS) areaSlots.push('night');
 
                                 return (
-                                    <td key={`${dateStr}-${area.id}`} className={`border-r border-gray-200 p-0 align-top ${isWeekend ? 'bg-gray-50' : ''}`}>
+                                    <td key={`${dateStr}-${area.id}`} className={`border-r border-gray-200 p-0 align-top ${(isWeekend || isHoliday) ? 'bg-gray-50' : ''}`}>
                                         <div className="flex h-full w-full">
                                             {areaSlots.map(slot => {
                                                 // Find shifts for this specific slot
